@@ -1,26 +1,114 @@
 <script>
 export default {
   mounted() {
-    $(document).trigger('change');
+    $(document).trigger('changed');
     this.getProducts();
+    this.getFilterList();
+    this.getFilteredProductList();
+    this.addColor();
+    this.addTag();
   },
 
   data() {
     return {
-      products: []
+      products: [],
+      popupProduct: null,
+      filterList : [],
+      categories: [],
+      colors: [],
+      tags: [],
+      price: [],
     }
   },
 
   methods: {
+    addTag(id){
+      if(!this.tags.includes(id) && (id !== undefined)){
+        this.tags.push(id)
+      } else {
+        this.tags = this.tags.filter( elem =>{
+          return elem !== id
+        })
+      }
+    },
+
+    addColor(id){
+      if(!this.colors.includes(id) && (id !== undefined)){
+        this.colors.push(id)
+      } else {
+        this.colors = this.colors.filter( elem =>{
+          return elem !== id
+        })
+      }
+    },
+
+    getFilteredProductList(){
+      let price = $('#priceRange').val()
+      if (price !== ''){
+        this.price = price.replace(/[\s+]|[$]/g, '').split('-')
+      }
+
+      this.axios.post('http://127.0.0.1:8000/api/products', {
+        'categories':this.categories,
+        'colors':this.colors,
+        'tags':this.tags,
+        'price':this.price
+      })
+          .then(res => {
+            this.products = res.data.data
+            console.log('--------FILTER---------')
+            console.log(this.categories)
+            console.log(this.colors)
+            console.log(this.tags)
+            console.log(this.price)
+            console.log('--------END FILTER---------')
+          })
+          .finally( v =>{
+            $(document).trigger('changed')
+          })
+    },
+
     getProducts(){
-      this.axios.get('http://127.0.0.1:8000/api/products')
+      this.axios.post('http://127.0.0.1:8000/api/products')
           .then(res => {
             this.products = res.data.data
             console.log(res)
           })
           .finally( v =>{
-            $(document).trigger('change')
+            $(document).trigger('changed')
       })
+    },
+    getProduct(id){
+      this.axios.get(`http://127.0.0.1:8000/api/products/${id}`)
+          .then(res => {
+            this.popupProduct = res.data.data
+            console.log(res);
+          })
+          .finally( v =>{
+            $(document).trigger('changed')
+          })
+    },
+    getFilterList(){
+      this.axios.get('http://127.0.0.1:8000/api/products/filters')
+          .then(res => {
+            this.filterList = res.data
+            //  Price Filter
+            if ($("#price-range").length) {
+              $("#price-range").slider({
+                range: true,
+                min: this.filterList.price.min,
+                max: this.filterList.price.max,
+                values: [this.filterList.price.min, this.filterList.price.max],
+                slide: function (event, ui) {
+                  $("#priceRange").val("$" + ui.values[0] + " - $" + ui.values[1]);
+                }
+              });
+              $("#priceRange").val("$" + $("#price-range").slider("values", 0) + " - $" + $("#price-range").slider("values", 1));
+            }
+          })
+          .finally( v =>{
+            $(document).trigger('changed')
+          })
     },
 
   },
@@ -129,38 +217,21 @@ export default {
                   <div class="single-sidebar-box mt-30 wow fadeInUp animated ">
                     <h4>Select Categories</h4>
                     <div class="checkbox-item">
-                      <form>
-                        <div class="form-group"> <input type="checkbox" id="bedroom"> <label
-                            for="bedroom">Bedroom</label> </div>
-                        <div class="form-group"> <input type="checkbox" id="decoration"> <label
-                            for="decoration">Decoration</label> </div>
-                        <div class="form-group"> <input type="checkbox" id="kitchen"> <label
-                            for="kitchen">Kitchen</label> </div>
-                        <div class="form-group"> <input type="checkbox" id="clothing"> <label
-                            for="clothing">Clothing</label> </div>
-                        <div class="form-group"> <input type="checkbox" id="office"> <label
-                            for="office">Office</label> </div>
-                        <div class="form-group m-0"> <input type="checkbox" id="lighting"> <label
-                            for="lighting">Lighting</label> </div>
+                      <form >
+                        <div v-for="category in filterList.categories" class="form-group">
+                          <input type="checkbox" v-model="categories" :id="category.id" :value="category.id">
+                          <label :for="category.id"  >{{ category.title }}</label>
+                        </div>
                       </form>
                     </div>
                   </div>
                   <div class="single-sidebar-box mt-30 wow fadeInUp animated">
                     <h4>Color Option </h4>
-                    <ul class="color-option">
-                      <li> <a href="#0" class="color-option-single"> <span> Black</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg2"> <span> Yellow</span> </a>
-                      </li>
-                      <li> <a href="#0" class="color-option-single bg3"> <span> Red</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg4"> <span> Blue</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg5"> <span> Green</span> </a>
-                      </li>
-                      <li> <a href="#0" class="color-option-single bg6"> <span> Olive</span> </a>
-                      </li>
-                      <li> <a href="#0" class="color-option-single bg7"> <span> Lime</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg8"> <span> Pink</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg9"> <span> Cyan</span> </a> </li>
-                      <li> <a href="#0" class="color-option-single bg10"> <span> Magenta</span> </a>
+                    <ul  class="color-option">
+                      <li v-for="color in filterList.colors">
+                        <a href="#0" @click.prevent="addColor(color.id)" :style="`background: #${color.title};border: 1px solid black `" class="color-option-single">
+                          <span>{{ color.description }}</span>
+                        </a>
                       </li>
                     </ul>
                   </div>
@@ -168,28 +239,18 @@ export default {
                     <h4>Filter By Price</h4>
                     <div class="slider-box">
                       <div id="price-range" class="slider"></div>
-                      <div class="output-price"> <label for="priceRange">Price:</label> <input
-                          type="text" id="priceRange" readonly> </div> <button class="filterbtn"
-                                                                               type="submit"> Filter </button>
+                      <div class="output-price"> <label for="priceRange">Price:</label>
+                        <input type="text" id="priceRange" readonly>
+                      </div>
+                      <button @click.prevent="getFilteredProductList()" class="filterbtn" type="submit"> Filter </button>
                     </div>
                   </div>
                   <div class="single-sidebar-box mt-30 wow fadeInUp animated pb-0 border-bottom-0 ">
                     <h4>Tags </h4>
                     <ul class="popular-tag">
-                      <li><a href="#0">Tools</a></li>
-                      <li><a href="#0">Store</a></li>
-                      <li><a href="#0">Decoration</a></li>
-                      <li><a href="#0">Online</a></li>
-                      <li><a href="#0">Furnitures</a></li>
-                      <li><a href="#0">Beauty</a></li>
-                      <li><a href="#0">Fashion</a></li>
-                      <li><a href="#0">Office</a></li>
-                      <li><a href="#0">Clothing</a></li>
-                      <li><a href="#0">Interior</a></li>
-                      <li><a href="#0">Good</a></li>
-                      <li><a href="#0">Standard</a></li>
-                      <li><a href="#0">Chair’s</a></li>
-                      <li><a href="#0">Living Room</a></li>
+                      <li v-for="tag in filterList.tags">
+                        <a href="#0" @click.prevent="addTag(tag.id)">{{ tag.title}}</a>
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -269,62 +330,40 @@ export default {
                                       class="flaticon-left-and-right-arrows"></i>
                                     <span>
                                                                             compare</span> </a> </li>
-                                  <li><a :href="`#popup${product.id}`" class="popup_link"> <i
+                                  <li><a @click.prevent='getProduct(product.id)' :href="`#popup${product.id}`" class="popup_link"> <i
                                       class="flaticon-visibility"></i>
                                     <span> quick view</span>
                                   </a> </li>
                                 </ul>
                               </div>
                             </div>
+
                             <div :id="`popup${product.id}`" class="product-gird__quick-view-popup mfp-hide">
-                              <div class="container">
+                              <div v-if="popupProduct" class="container">
                                 <div class="row justify-content-between align-items-center">
                                   <div class="col-lg-6">
                                     <div class="quick-view__left-content">
                                       <div class="tabs">
                                         <div class="popup-product-thumb-box">
                                           <ul>
-                                            <li
-                                                class="tab-nav popup-product-thumb">
-                                              <a href="#tabb1">
-                                                <img :src=" product.image_url"
-                                                     alt="" /> </a> </li>
-                                            <li
-                                                class="tab-nav popup-product-thumb ">
-                                              <a href="#tabb2">
-                                                <img :src=" product.image_url"
-                                                     alt="" /> </a> </li>
-                                            <li
-                                                class="tab-nav popup-product-thumb ">
-                                              <a href="#tabb3">
-                                                <img :src=" product.image_url"
-                                                     alt="" /> </a> </li>
+                                            <li class="tab-nav popup-product-thumb" v-for="productImg in popupProduct.product_images">
+                                              <a :href="`#tabb${productImg.id}`">
+                                                <img :src="productImg.url" alt="" />
+                                              </a>
+                                            </li>
                                           </ul>
                                         </div>
                                         <div class="popup-product-main-image-box">
-                                          <div id="tabb1"
+                                          <div v-for="productImg in popupProduct.product_images" :id="`tabb${productImg.id}`"
                                                class="tab-item popup-product-image">
                                             <div
                                                 class="popup-product-single-image">
-                                              <img :src="product.image_url"
+                                              <img :src="productImg.url"
                                                    alt="" /> </div>
                                           </div>
-                                          <div id="tabb2"
-                                               class="tab-item popup-product-image">
-                                            <div
-                                                class="popup-product-single-image">
-                                              <img :src=" product.image_url"
-                                                   alt="" /> </div>
-                                          </div>
-                                          <div id="tabb3"
-                                               class="tab-item popup-product-image">
-                                            <div
-                                                class="popup-product-single-image">
-                                              <img :src=" product.image_url"
-                                                   alt="" /> </div>
-                                          </div> <button class="prev"> <i
-                                            class="flaticon-back"></i>
-                                        </button> <button class="next"> <i
+                                          <button class="prev"> <i
+                                              class="flaticon-back"></i>
+                                          </button> <button class="next"> <i
                                             class="flaticon-next"></i>
                                         </button>
                                         </div>
@@ -333,7 +372,7 @@ export default {
                                   </div>
                                   <div class="col-lg-6">
                                     <div class="popup-right-content">
-                                      <h3>{{ product.title }}</h3>
+                                      <h3>{{ popupProduct.title }}</h3>
                                       <div class="ratting"> <i
                                           class="flaticon-star"></i> <i
                                           class="flaticon-star"></i> <i
@@ -341,15 +380,15 @@ export default {
                                         <i class="flaticon-star"></i> <i
                                             class="flaticon-star"></i>
                                         <span>(112)</span> </div>
-                                      <p class="text"> {{ product.description}}
+                                      <p class="text"> {{ popupProduct.description}}
                                       </p>
                                       <div class="price">
-                                        <h2> ${{product.price}} USD <del> ${{ product.price+product.price/10 }} USD</del></h2>
+                                        <h2> ${{popupProduct.price}} USD <del> ${{ popupProduct.price+popupProduct.price/10 }} USD</del></h2>
                                         <h6> In stuck</h6>
                                       </div>
                                       <div  class="color-varient">
-                                        <template v-for="groupProduct in product.group_products">
-                                          <a v-for="color in groupProduct.colors" href="#"  :style="`background: #${color.title}`" class="color-name pink"><span>{{ color.title}}</span> </a>
+                                        <template v-for="groupProduct in popupProduct.group_products">
+                                          <a @click.prevent="getProduct(groupProduct.id)" v-for="color in groupProduct.colors" href="#"  :style="`background: #${color.title}`" class="color-name pink"><span>{{ color.title}}</span> </a>
                                         </template>
                                       </div>
 
@@ -357,33 +396,27 @@ export default {
                                         <h6>Qty:</h6>
                                         <div class="button-group">
                                           <div class="qtySelector text-center">
-                                                                                    <span class="decreaseQty"><i
-                                                                                        class="flaticon-minus"></i>
-                                                                                    </span> <input type="number"
-                                                                                                   class="qtyValue" value="1" />
-                                            <span class="increaseQty"> <i
-                                                class="flaticon-plus"></i>
-                                                                                    </span> </div>
+                  <span class="decreaseQty">
+                    <i class="flaticon-minus"></i>
+                  </span> <input type="number" class="qtyValue" value="1" />
+                                            <span class="increaseQty">
+                    <i class="flaticon-plus"></i>
+                  </span> </div>
                                           <button class="btn--primary "> Add to
                                             Cart </button>
                                         </div>
                                       </div>
-                                      <div class="payment-method"> <a href="#0"> <img
-                                          src="@/assets/images/payment_method/method_1.png"
-                                          alt=""> </a>
-                                        <a href="#0"> <img
-                                            src="@/assets/images/payment_method/method_2.png"
-                                            alt=""> </a> <a href="#0"> <img
-                                            src="@/assets/images/payment_method/method_3.png"
-                                            alt=""> </a>
-                                        <a href="#0"> <img
-                                            src="@/assets/images/payment_method/method_4.png"
-                                            alt=""> </a> </div>
+                                      <div class="payment-method"> <a href="#0">
+                                        <img src="@/assets/images/payment_method/method_1.png" alt=""> </a>
+                                        <a href="#0"> <img src="@/assets/images/payment_method/method_2.png" alt=""></a>
+                                        <a href="#0"> <img src="@/assets/images/payment_method/method_3.png" alt=""> </a>
+                                        <a href="#0"> <img src="@/assets/images/payment_method/method_4.png" alt=""> </a> </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
+
                             <div class="products-three-single-content text-center"> <span>{{ product.category.title}}</span>
                               <h5><a href="shop-details-3.html">{{product.title}}</a>
                               </h5>
