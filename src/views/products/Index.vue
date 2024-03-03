@@ -1,8 +1,9 @@
 <script>
+import { ref } from 'vue'
+const selected = ref('')
 export default {
   mounted() {
     $(document).trigger('changed');
-    this.getProducts();
     this.getFilterList();
     this.getFilteredProductList();
     this.addColor();
@@ -18,10 +19,23 @@ export default {
       colors: [],
       tags: [],
       price: [],
+      selectedFilter: 'Date, old to new',
     }
   },
 
   methods: {
+      onChange() {
+        this.axios.post('http://127.0.0.1:8000/api/products', {
+          'selectedFilter':this.selectedFilter,
+        })
+            .then(res => {
+              this.products = res.data.data
+            })
+            .finally( v =>{
+              $(document).trigger('changed')
+            })
+      },
+
     addTag(id){
       if(!this.tags.includes(id) && (id !== undefined)){
         this.tags.push(id)
@@ -35,6 +49,7 @@ export default {
     addColor(id){
       if(!this.colors.includes(id) && (id !== undefined)){
         this.colors.push(id)
+        console.log(this.selected)
       } else {
         this.colors = this.colors.filter( elem =>{
           return elem !== id
@@ -52,7 +67,8 @@ export default {
         'categories':this.categories,
         'colors':this.colors,
         'tags':this.tags,
-        'price':this.price
+        'price':this.price,
+        'selectedFilter':this.selectedFilter,
       })
           .then(res => {
             this.products = res.data.data
@@ -61,6 +77,7 @@ export default {
             console.log(this.colors)
             console.log(this.tags)
             console.log(this.price)
+            console.log(this.selectedFilter)
             console.log('--------END FILTER---------')
           })
           .finally( v =>{
@@ -68,16 +85,17 @@ export default {
           })
     },
 
-    getProducts(){
-      this.axios.post('http://127.0.0.1:8000/api/products')
-          .then(res => {
-            this.products = res.data.data
-            console.log(res)
-          })
-          .finally( v =>{
-            $(document).trigger('changed')
-      })
-    },
+    // getProducts(){
+    //   this.axios.post('http://127.0.0.1:8000/api/products')
+    //       .then(res => {
+    //         this.products = res.data.data
+    //         console.log(res)
+    //       })
+    //       .finally( v =>{
+    //         $(document).trigger('changed')
+    //   })
+    // },
+
     getProduct(id){
       this.axios.get(`http://127.0.0.1:8000/api/products/${id}`)
           .then(res => {
@@ -92,6 +110,7 @@ export default {
       this.axios.get('http://127.0.0.1:8000/api/products/filters')
           .then(res => {
             this.filterList = res.data
+            console.log(this.filterList)
             //  Price Filter
             if ($("#price-range").length) {
               $("#price-range").slider({
@@ -268,14 +287,14 @@ export default {
                         class="right-box justify-content-md-between justify-content-center wow fadeInUp animated">
                       <div class="short-by">
                         <div class="select-box">
-                          <select class="wide">
-                            <option data-display="Short by latest">Featured </option>
+                          <select v-model="selectedFilter" @change="onChange()" class="form-select" aria-label="Default select example">
+                            <option selected>Date, old to new</option>
                             <option value="1">Best selling </option>
                             <option value="2">Alphabetically, A-Z</option>
                             <option value="3">Alphabetically, Z-A</option>
-                            <option value="3">Price, low to high</option>
-                            <option value="3">Price, high to low</option>
-                            <option value="3">Date, old to new</option>
+                            <option value="4">Price, low to high</option>
+                            <option value="5">Price, high to low</option>
+                            <option value="6">Short by latest</option>
                           </select>
                         </div>
                       </div>
