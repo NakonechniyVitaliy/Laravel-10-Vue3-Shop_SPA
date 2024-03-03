@@ -3,7 +3,7 @@ import { ref } from 'vue'
 const selected = ref('')
 export default {
   mounted() {
-    $(document).trigger('changed');
+    // $(document).trigger('changed');
     this.getFilterList();
     this.getFilteredProductList();
     this.addColor();
@@ -20,6 +20,7 @@ export default {
       tags: [],
       price: [],
       selectedFilter: 'Date, old to new',
+      pagination: [],
     }
   },
 
@@ -33,6 +34,7 @@ export default {
             })
             .finally( v =>{
               $(document).trigger('changed')
+              this.getProducts();
             })
       },
 
@@ -62,39 +64,27 @@ export default {
       if (price !== ''){
         this.price = price.replace(/[\s+]|[$]/g, '').split('-')
       }
+      this.getProducts()
+    },
 
+    getProducts(page = 1){
       this.axios.post('http://127.0.0.1:8000/api/products', {
-        'categories':this.categories,
-        'colors':this.colors,
-        'tags':this.tags,
-        'price':this.price,
-        'selectedFilter':this.selectedFilter,
+            'categories':this.categories,
+            'colors':this.colors,
+            'tags':this.tags,
+            'price':this.price,
+            'selectedFilter':this.selectedFilter,
+            'page': page
       })
           .then(res => {
             this.products = res.data.data
-            console.log('--------FILTER---------')
-            console.log(this.categories)
-            console.log(this.colors)
-            console.log(this.tags)
-            console.log(this.price)
-            console.log(this.selectedFilter)
-            console.log('--------END FILTER---------')
+            this.pagination = res.data.meta
+            console.log(res)
           })
           .finally( v =>{
             $(document).trigger('changed')
-          })
+      })
     },
-
-    // getProducts(){
-    //   this.axios.post('http://127.0.0.1:8000/api/products')
-    //       .then(res => {
-    //         this.products = res.data.data
-    //         console.log(res)
-    //       })
-    //       .finally( v =>{
-    //         $(document).trigger('changed')
-    //   })
-    // },
 
     getProduct(id){
       this.axios.get(`http://127.0.0.1:8000/api/products/${id}`)
@@ -2175,15 +2165,32 @@ export default {
               <div class="row">
                 <div class="col-12 d-flex justify-content-center wow fadeInUp animated">
                   <ul class="pagination text-center">
-                    <li class="next"><a href="#0"><i class="flaticon-left-arrows"
-                                                     aria-hidden="true"></i> </a></li>
-                    <li><a href="#0">1</a></li>
-                    <li><a href="#0" class="active">2</a></li>
-                    <li><a href="#0">3</a></li>
-                    <li><a href="#0">...</a></li>
-                    <li><a href="#0">10</a></li>
-                    <li class="next"><a href="#0"><i class="flaticon-next-1"
-                                                     aria-hidden="true"></i> </a></li>
+
+                    <li v-if="pagination.current_page !== 1" class="next">
+                      <a @click.prevent="getProducts(pagination.current_page - 1)" href="#0">
+                        <i class="flaticon-left-arrows" aria-hidden="true"></i>
+                      </a>
+                    </li>
+
+                    <template v-for="link in pagination.links">
+                      <template v-if="Number(link.label)">
+                        <li v-if="(pagination.current_page-link.label < 2
+                                                && pagination.current_page-link.label > -2)
+                                                || +link.label === 1 || +link.label === pagination.last_page">
+                          <a @click.prevent="getProducts(link.label)" :class='{active: link.active}' href="#0">{{ link.label }}</a>
+                        </li>
+                        <li v-else-if="(pagination.current_page-link.label == 2
+                                                || pagination.current_page-link.label == -2)">
+                          <a href="#0"> ... </a>
+                        </li>
+                      </template>
+                    </template>
+
+                    <li v-if="pagination.current_page !== pagination.last_page" class="next">
+                      <a @click.prevent="getProducts(pagination.current_page + 1)" href="#0">
+                        <i class="flaticon-next-1" aria-hidden="true"></i>
+                      </a>
+                    </li>
                   </ul>
                 </div>
               </div>
