@@ -1,7 +1,7 @@
 <script>
 export default {
   mounted() {
-    $(document).trigger('change');
+    $(document).trigger('changed');
   }
 }
 </script>
